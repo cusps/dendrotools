@@ -3,8 +3,9 @@ import json
 import math
 from subprocess import call
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = 1000000000
 
-FULL_IMAGES_PATH = ''
+FULL_IMAGES_PATH = '/home/bunjake/dev/test_dendrotools'
 RESULTS_PATH = ''
 MAX_PIXEL_DIM_WITHOUT_OVERLAP = 5700
 MAX_PIXEL_DIM = 6000
@@ -16,7 +17,7 @@ class FullImage:
     """
 
     """
-    def __init__(self, full_image_path):
+    def __init__(self, full_image_path, results_path):
         self.path = full_image_path
         self.name = os.path.basename(os.path.normpath(self.path))
         with Image.open(self.path) as img:
@@ -27,7 +28,7 @@ class FullImage:
         self.sections_json = "{}\\{}_section_results.json".format(FULL_IMAGES_PATH, self.name)
         self.section_size = self._calc_section_size()
         self._break_up_image()
-        self._run_detection_sections()
+        #self._run_detection_sections()
 
     def _calc_section_size(self):
         self.num_sections = math.ceil(self.width / MAX_PIXEL_DIM_WITHOUT_OVERLAP)
@@ -47,14 +48,14 @@ class FullImage:
                 excess_length = int((self.width - (self.num_sections * self.section_size[0])) / 2)
                 leftover_length = self.section_size[0] - excess_length
                 increment = self.section_size[0] - OVERLAP
-                self.section_widths[0] = 0
+                self.section_widths.append(0)
                 self._create_section(full_img, 0, (self.section_widths[0], leftover_length), sections)
                 for i in range(1, self.num_sections-1):
-                    self.section_widths[i] = i * increment - excess_length
+                    self.section_widths.append(i * increment - excess_length)
                     self._create_section(full_img, i,
                                          (self.section_widths[i],
                                           self.section_widths[i] + self.section_size[0]), sections)
-                self.section_widths[self.num_sections - 1] = self.width - leftover_length
+                self.section_widths.append(self.width - leftover_length)
                 self._create_section(full_img, self.num_sections,
                                      (self.section_widths[self.num_sections - 1], self.width),
                                      sections)
@@ -62,10 +63,10 @@ class FullImage:
     def _create_section(self, full_img, num, width_dims, list_file):
         section_name = FULL_IMAGES_PATH + "\\{}_section_{}.jpg".format(self.name, (num + 1))
         full_img.crop((
-            width_dims[0], self.section_size[1][1],
-            width_dims[1], self.section_size[1][0]
+            width_dims[0], self.section_size[1][0],
+            width_dims[1], self.section_size[1][1]
         )).save(section_name)
-        list_file.write(section_name)
+        list_file.write('{}\n'.format(section_name))
 
     def _run_detection_sections(self):
         sections_results = "{}\\{}_section_results.json".format(FULL_IMAGES_PATH, self.name)
