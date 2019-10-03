@@ -5,8 +5,6 @@ from subprocess import call
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = 1000000000
 
-FULL_IMAGES_PATH = '/home/bunjake/dev/test_dendrotools'
-RESULTS_PATH = ''
 MAX_PIXEL_DIM_WITHOUT_OVERLAP = 5700
 MAX_PIXEL_DIM = 6000
 DETECTOR_PATH = ''
@@ -17,18 +15,21 @@ class FullImage:
     """
 
     """
-    def __init__(self, full_image_path, results_path):
+    def __init__(self, full_image_path, results_path, detector_path=None):
+        self.detector = DETECTOR_PATH if not detector_path else detector_path
         self.path = full_image_path
+        self.image_folder = os.path.dirname(full_image_path)
+        self.result_path = results_path
         self.name = os.path.basename(os.path.normpath(self.path))
         with Image.open(self.path) as img:
             self.width = img.size[0]
             self.height = img.size[1]
         self.num_sections = None
-        self.sections_text = "{}\\{}_sections.txt".format(FULL_IMAGES_PATH, self.name)
-        self.sections_json = "{}\\{}_section_results.json".format(FULL_IMAGES_PATH, self.name)
+        self.sections_text = "{}\\{}_sections.txt".format(self.image_folder, self.name)
+        self.sections_json = "{}\\{}_section_results.json".format(self.image_folder, self.name)
         self.section_size = self._calc_section_size()
         self._break_up_image()
-        #self._run_detection_sections()
+        # self._run_detection_sections()
 
     def _calc_section_size(self):
         self.num_sections = math.ceil(self.width / MAX_PIXEL_DIM_WITHOUT_OVERLAP)
@@ -61,7 +62,7 @@ class FullImage:
                                      sections)
 
     def _create_section(self, full_img, num, width_dims, list_file):
-        section_name = FULL_IMAGES_PATH + "\\{}_section_{}.jpg".format(self.name, (num + 1))
+        section_name = self.image_folder + "\\{}_section_{}.jpg".format(self.name, (num + 1))
         full_img.crop((
             width_dims[0], self.section_size[1][0],
             width_dims[1], self.section_size[1][1]
@@ -69,7 +70,7 @@ class FullImage:
         list_file.write('{}\n'.format(section_name))
 
     def _run_detection_sections(self):
-        sections_results = "{}\\{}_section_results.json".format(FULL_IMAGES_PATH, self.name)
+        sections_results = "{}\\{}_section_results.json".format(self.image_folder, self.name)
         cmd = [DETECTOR_PATH + './darknet', 'detector', 'test', '.data', '.cfg', '.weights', '-ext_output',
                '-dont_show', '-out', self.sections_json,
                '<', self.sections_text]
@@ -145,14 +146,14 @@ class FullImage:
                 j += 1
             i += 1
 
-        json_dict = {"frame_id": 1, "filename": (FULL_IMAGES_PATH + self.name), "object": []}
+        json_dict = {"frame_id": 1, "filename": (self.image_folder + self.name), "object": []}
         for detection in detections:
             json_dict["objects"].append(detection.info)
 
         return [json_dict]
 
     def _save_results(self, results):
-        json.dump(results, open(RESULTS_PATH, 'w'))
+        json.dump(results, open(self.result_path, 'w'))
 
 
 class Detection:

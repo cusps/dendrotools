@@ -4,40 +4,29 @@ import os
 
 from .full_image import FullImage
 
-help = """"""
+HELP = """"""
+
 
 def main(argv):
-    # if "-d" in args:
-    #     set_defaults(args)
     opts = []
     params = []
     try:
         opts, params = getopt.getopt(argv, "hf:o:l:", ["file=", "output=", "folder="])
     except getopt.GetoptError:
         print('test.py -i <inputfile> -o <outputfile>')
-    file = ''
-    output = ''
-    folder = ''
+
     for opt, arg in opts:
         if opt == 'h':
-            print(help)
+            print(HELP)
             exit()
-        elif opt in ('-f', '--file'):
-            file = arg
-        elif opt in ('-o', '--output'):
-            output = arg
-        elif opt in ('-l', '--folder'):
-            folder = arg
 
-    if output:
-        if file:
-            _run_full_image(file, output)
-        elif folder:
-            _run_folder(file, output)
-        else:
-            raise ValueError("Need to specify input location.")
-    else:
-        raise ValueError("Need to specify output location.")
+    input = params[0]
+    output = params[1]
+
+    if '.tiff' in input:
+        _run_full_image(input, output)
+    elif os.path.isdir(input):
+        _run_folder(input, output)
 
 
 def _run_full_image(input, output):
