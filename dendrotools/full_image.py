@@ -22,7 +22,6 @@ class FullImage:
         self.image_folder = os.path.dirname(full_image_path)
         self.result_path = results_path
         self.name = os.path.basename(os.path.normpath(self.path))
-        print(self.image_folder)
         with Image.open(self.path) as img:
             self.width = img.size[0]
             self.height = img.size[1]
@@ -73,12 +72,15 @@ class FullImage:
 
     def _run_detection_sections(self):
         sections_results = "{}//{}_section_results.json".format(self.image_folder, self.name)
-        cmd = [DETECTOR_PATH + './darknet', 'detector', 'test', '.data', '.cfg', '.weights', '-ext_output',
+        cmd = ['.' + DETECTOR_PATH, 'detector', 'test', '.data', '.cfg', '.weights', '-ext_output',
                '-dont_show', '-out', self.sections_json,
                '<', self.sections_text]
+
         call(cmd)
 
         full_result = self._merge_sections_detections(sections_results)
+
+        #self._delete_sections()
 
         self._save_results(full_result)
 
@@ -156,6 +158,12 @@ class FullImage:
 
     def _save_results(self, results):
         json.dump(results, open(self.result_path, 'w'))
+
+    def _delete_sections(self):
+        for section in open(self.sections_text, 'r'):
+            os.remove(section)
+
+        os.remove(self.sections_json)
 
 
 class Detection:
