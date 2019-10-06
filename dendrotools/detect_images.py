@@ -40,7 +40,7 @@ def _run_full_image(input, output):
 
 def _run_folder(input, output):
     for f in os.listdir(input):
-        _run_full_image('{}//{}'.format(input,f), output)
+        _run_full_image('{}//{}'.format(input, f), output)
 
 
 if __name__ == "__main__":

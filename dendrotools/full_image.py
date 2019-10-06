@@ -23,18 +23,17 @@ class FullImage:
         self.detector = DETECTOR_PATH if not detector_path else detector_path
         self.path = full_image_path
         self.image_folder = os.path.dirname(full_image_path)
-        self.result_path = results_path
-        self.name = os.path.basename(os.path.normpath(self.path))
+        self.name = os.path.splitext(os.path.basename(os.path.normpath(self.path)))[0]
+        self.result_path = '{}/{}.json'.format(results_path, self.name)
         with Image.open(self.path) as img:
             self.width = img.size[0]
             self.height = img.size[1]
         self.num_sections = None
-        self.sections_text = "{}//{}_sections.txt".format(self.image_folder, self.name)
-        self.sections_json = "{}//{}_section_results.json".format(self.image_folder, self.name)
+        self.sections_text = "{}/{}_sections.txt".format(self.image_folder, self.name)
+        self.sections_json = "{}/{}_section_results.json".format(self.image_folder, self.name)
         self.section_size = self._calc_section_size()
         self._break_up_image()
         self.detect_command = DETECTOR_COMMAND.format(DETECTOR_PATH, DETECTOR_FOLDER, DETECTOR_FOLDER, DETECTOR_FOLDER, self.sections_json, self.sections_text)
-        print(self.detect_command)
         self._run_detection_sections()
 
     def _calc_section_size(self):
@@ -52,23 +51,23 @@ class FullImage:
         self.section_widths = []
         with Image.open(self.path) as full_img:
             with open(self.sections_text, 'w') as sections:
-                excess_length = int((self.width - (self.num_sections * self.section_size[0])) / 2)
+                excess_length = int(((self.num_sections * self.section_size[0]) - self.width)) #got rid of divide by 2
                 leftover_length = self.section_size[0] - excess_length
                 increment = self.section_size[0] - OVERLAP
                 self.section_widths.append(0)
-                self._create_section(full_img, 0, (self.section_widths[0], leftover_length), sections)
+                self._create_section(full_img, 0, (0, self.section_size[0]), sections)
                 for i in range(1, self.num_sections-1):
-                    self.section_widths.append(i * increment - excess_length)
+                    self.section_widths.append(i * increment)#- excess_length)
                     self._create_section(full_img, i,
                                          (self.section_widths[i],
                                           self.section_widths[i] + self.section_size[0]), sections)
-                self.section_widths.append(self.width - leftover_length)
-                self._create_section(full_img, self.num_sections,
-                                     (self.section_widths[self.num_sections - 1], self.width),
+                self.section_widths.append((i+1) * increment)
+                self._create_section(full_img, self.num_sections-1,
+                                     (self.section_widths[self.num_sections-1], self.width),
                                      sections)
 
     def _create_section(self, full_img, num, width_dims, list_file):
-        section_name = self.image_folder + "//{}_section_{}.jpg".format(self.name, (num + 1))
+        section_name = self.image_folder + "/{}_section_{}.jpg".format(self.name, (num + 1))
         full_img.crop((
             width_dims[0], self.section_size[1][0],
             width_dims[1], self.section_size[1][1]
@@ -76,24 +75,16 @@ class FullImage:
         list_file.write('{}\n'.format(section_name))
 
     def _run_detection_sections(self):
-        sections_results = "{}//{}_section_results.json".format(self.image_folder, self.name)
-        #cmd = ['sudo', DETECTOR_PATH, 'detector', 'data//obj.data', 'yolo-obj-detect-full.cfg', 'backup//yolo-obj_final.weights', '-ext_output',
-        #       '-dont_show', '-out', self.sections_json,
-        #       '<', self.sections_text]
-
-        # call(cmd)
-
-        #if 'error' in msg:
-        #    raise RuntimeError('Detector failed: \n{}'.format(msg))
-
-        #output = check_output([self.detect_command])
+        sections_results = "{}/{}_section_results.json".format(self.image_folder, self.name)
 
         os.system(self.detect_command)
-        os.wait()
+
+        #if 'error' in msg or "couldn't" in msg:
+        #    raise RuntimeError('Detector failed: \n{}'.format(msg))
 
         full_result = self._merge_sections_detections(sections_results)
 
-        #self._delete_sections()
+        self._delete_sections()
 
         self._save_results(full_result)
 
@@ -145,11 +136,10 @@ class FullImage:
         sections_results = json.load(open(sections_results_path, 'r'))
         detections = []
         dims = (self.section_size[0], self.section_size[1][1] - self.section_size[1][0])
-        print(self.section_widths)
         for section in sections_results:
             for detection in section["objects"]:
                 num_section = section["frame_id"]
-                detections.append(Detection(num_section, self.section_widths[num_section],
+                detections.append(Detection(num_section, self.section_widths[num_section-1],
                                             detection, dims))
 
         i = 0
@@ -164,7 +154,7 @@ class FullImage:
                 j += 1
             i += 1
 
-        json_dict = {"frame_id": 1, "filename": (self.image_folder + self.name), "object": []}
+        json_dict = {"frame_id": 1, "filename": (self.image_folder + self.name), "objects": []}
         for detection in detections:
             json_dict["objects"].append(detection.info)
 
@@ -174,9 +164,10 @@ class FullImage:
         json.dump(results, open(self.result_path, 'w'))
 
     def _delete_sections(self):
-        for section in open(self.sections_text, 'r'):
+        lines = open(self.sections_text, 'r').read().splitlines()
+        for section in lines:
             os.remove(section)
-
+        os.remove(self.sections_text)
         os.remove(self.sections_json)
 
 
