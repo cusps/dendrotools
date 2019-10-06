@@ -1,1 +1,1 @@
-from .full_image import FullImage
+from .detect_images import detect

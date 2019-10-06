@@ -13,7 +13,7 @@ def main(argv):
     try:
         opts, params = getopt.getopt(argv, "hf:o:l:", ["file=", "output=", "folder="])
     except getopt.GetoptError:
-        print('test.py -i <inputfile> -o <outputfile>')
+        print('test.py [options] <inputfile> <outputfile>')
 
     for opt, arg in opts:
         if opt == 'h':
@@ -23,6 +23,10 @@ def main(argv):
     input = params[0]
     output = params[1]
 
+    detect(input, output)
+
+
+def detect(input, output):
     if '.tiff' in input:
         _run_full_image(input, output)
     elif os.path.isdir(input):
@@ -36,7 +40,7 @@ def _run_full_image(input, output):
 
 def _run_folder(input, output):
     for f in os.listdir(input):
-        _run_full_image(f, output)
+        _run_full_image('{}//{}'.format(input,f), output)
 
 
 if __name__ == "__main__":

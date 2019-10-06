@@ -7,7 +7,8 @@ Image.MAX_IMAGE_PIXELS = 1000000000
 
 MAX_PIXEL_DIM_WITHOUT_OVERLAP = 5700
 MAX_PIXEL_DIM = 6000
-DETECTOR_PATH = ''
+DETECTOR_PATH = '/home/bunjake/dev/darknet/build/darknet/x64/darknet'
+DETECTOR_COMMAND = './darknet detector test data/obj.data yolo-obj-detect-full.cfg backup/yolo-obj_final.weights -ext_output -out result.json  < data/new_train.txt'
 OVERLAP = 300
 
 
@@ -21,12 +22,13 @@ class FullImage:
         self.image_folder = os.path.dirname(full_image_path)
         self.result_path = results_path
         self.name = os.path.basename(os.path.normpath(self.path))
+        print(self.image_folder)
         with Image.open(self.path) as img:
             self.width = img.size[0]
             self.height = img.size[1]
         self.num_sections = None
-        self.sections_text = "{}\\{}_sections.txt".format(self.image_folder, self.name)
-        self.sections_json = "{}\\{}_section_results.json".format(self.image_folder, self.name)
+        self.sections_text = "{}//{}_sections.txt".format(self.image_folder, self.name)
+        self.sections_json = "{}//{}_section_results.json".format(self.image_folder, self.name)
         self.section_size = self._calc_section_size()
         self._break_up_image()
         # self._run_detection_sections()
@@ -62,7 +64,7 @@ class FullImage:
                                      sections)
 
     def _create_section(self, full_img, num, width_dims, list_file):
-        section_name = self.image_folder + "\\{}_section_{}.jpg".format(self.name, (num + 1))
+        section_name = self.image_folder + "//{}_section_{}.jpg".format(self.name, (num + 1))
         full_img.crop((
             width_dims[0], self.section_size[1][0],
             width_dims[1], self.section_size[1][1]
@@ -70,7 +72,7 @@ class FullImage:
         list_file.write('{}\n'.format(section_name))
 
     def _run_detection_sections(self):
-        sections_results = "{}\\{}_section_results.json".format(self.image_folder, self.name)
+        sections_results = "{}//{}_section_results.json".format(self.image_folder, self.name)
         cmd = [DETECTOR_PATH + './darknet', 'detector', 'test', '.data', '.cfg', '.weights', '-ext_output',
                '-dont_show', '-out', self.sections_json,
                '<', self.sections_text]
