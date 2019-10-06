@@ -1,6 +1,8 @@
 import os
 import json
 import math
+import time
+from subprocess import check_output
 from subprocess import call
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = 1000000000
@@ -8,7 +10,8 @@ Image.MAX_IMAGE_PIXELS = 1000000000
 MAX_PIXEL_DIM_WITHOUT_OVERLAP = 5700
 MAX_PIXEL_DIM = 6000
 DETECTOR_PATH = '/home/bunjake/dev/darknet/build/darknet/x64/darknet'
-DETECTOR_COMMAND = './darknet detector test data/obj.data yolo-obj-detect-full.cfg backup/yolo-obj_final.weights -ext_output -out result.json  < data/new_train.txt'
+DETECTOR_FOLDER = '/home/bunjake/dev/darknet/build/darknet/x64/'
+DETECTOR_COMMAND = 'sudo {} detector test {}data/obj_far.data {}yolo-obj-detect-full.cfg {}backup/yolo-obj_final.weights -ext_output -dont_show -out {} < {}'
 OVERLAP = 300
 
 
@@ -30,7 +33,9 @@ class FullImage:
         self.sections_json = "{}//{}_section_results.json".format(self.image_folder, self.name)
         self.section_size = self._calc_section_size()
         self._break_up_image()
-        # self._run_detection_sections()
+        self.detect_command = DETECTOR_COMMAND.format(DETECTOR_PATH, DETECTOR_FOLDER, DETECTOR_FOLDER, DETECTOR_FOLDER, self.sections_json, self.sections_text)
+        print(self.detect_command)
+        self._run_detection_sections()
 
     def _calc_section_size(self):
         self.num_sections = math.ceil(self.width / MAX_PIXEL_DIM_WITHOUT_OVERLAP)
@@ -72,11 +77,19 @@ class FullImage:
 
     def _run_detection_sections(self):
         sections_results = "{}//{}_section_results.json".format(self.image_folder, self.name)
-        cmd = ['.' + DETECTOR_PATH, 'detector', 'test', '.data', '.cfg', '.weights', '-ext_output',
-               '-dont_show', '-out', self.sections_json,
-               '<', self.sections_text]
+        #cmd = ['sudo', DETECTOR_PATH, 'detector', 'data//obj.data', 'yolo-obj-detect-full.cfg', 'backup//yolo-obj_final.weights', '-ext_output',
+        #       '-dont_show', '-out', self.sections_json,
+        #       '<', self.sections_text]
 
-        call(cmd)
+        # call(cmd)
+
+        #if 'error' in msg:
+        #    raise RuntimeError('Detector failed: \n{}'.format(msg))
+
+        #output = check_output([self.detect_command])
+
+        os.system(self.detect_command)
+        os.wait()
 
         full_result = self._merge_sections_detections(sections_results)
 
@@ -132,6 +145,7 @@ class FullImage:
         sections_results = json.load(open(sections_results_path, 'r'))
         detections = []
         dims = (self.section_size[0], self.section_size[1][1] - self.section_size[1][0])
+        print(self.section_widths)
         for section in sections_results:
             for detection in section["objects"]:
                 num_section = section["frame_id"]
