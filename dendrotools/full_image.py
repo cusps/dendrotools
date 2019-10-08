@@ -140,7 +140,7 @@ class FullImage:
             for detection in section["objects"]:
                 num_section = section["frame_id"]
                 detections.append(Detection(num_section, self.section_widths[num_section-1],
-                                            detection, dims))
+                                            detection, dims, self.width, self.height))
 
         i = 0
         while i < len(detections):
@@ -173,23 +173,20 @@ class FullImage:
 
 class Detection:
 
-    def __init__(self, section, offset, detection_info, dims):
-        # make placement change here
-        # self.section_placement = offset
+    def __init__(self, section, offset, detection_info, dims, img_width, img_height):
         self.section_num = section
         self.percent = detection_info['confidence']
         self.info = detection_info
-        self.info['relative_coordinates']['height'] *= dims[1]
-        self.info['relative_coordinates']['width'] *= dims[0]
-        self.height = self.info['relative_coordinates']['height']
-        self.width = self.info['relative_coordinates']['width']
-        half_width = (.5 * self.width)
-        self.info['relative_coordinates']['width'] = (self.info['relative_coordinates']['width'] *
-                                                      dims[0] - half_width + offset)
-        self.info['relative_coordinates']['height'] = (self.info['relative_coordinates']['height'] *
-                                                       dims[1] - half_width)
-        self.left_x = detection_info['relative_coordinates']['width']
-        self.top_y = detection_info['relative_coordinates']['height']
+        self.height = self.info['relative_coordinates']['height'] * dims[1]
+        self.width = self.info['relative_coordinates']['width'] * dims[0]
+        self.info['relative_coordinates']['center_y'] = (self.info['relative_coordinates']['center_y'] *
+                                                         dims[1]) / img_height
+        self.info['relative_coordinates']['center_x'] = (self.info['relative_coordinates']['center_x'] *
+                                                         dims[0] + offset) / img_width
+        self.left_x = detection_info['relative_coordinates']['center_x'] - self.width/2
+        self.top_y = detection_info['relative_coordinates']['center_y'] + self.height/2
+        self.info['relative_coordinates']['height'] = self.height/img_height
+        self.info['relative_coordinates']['width'] = self.width/img_width
         self.image_class = detection_info['name']
 
     def __str__(self):
