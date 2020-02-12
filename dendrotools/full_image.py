@@ -109,7 +109,7 @@ class FullImage:
         iou = inter_area / float(box_a_area + box_b_area - inter_area)
 
         # return the intersection over union value
-        return iou
+        return iou, inter_area/float(box_a_area), inter_area/float(box_a_area)
 
     def _detection_overlap(self, first, second):
         first_right = first.left_x + first.width
