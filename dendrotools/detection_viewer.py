@@ -30,8 +30,8 @@ def create_view(json_path, viewer_folder_path=None, image_path=None):
             detection_height = detection['relative_coordinates']['height']*height
             detection_x = detection['relative_coordinates']['center_x']*width - detection_width/2
             detection_y = detection['relative_coordinates']['center_y']*height - detection_height/2
-            rect = [(detection_x, detection_y + detection_height), (detection_y, detection_x + detection_width)]
+            rect = [(detection_x, detection_y), (detection_x + detection_width, detection_y + detection_height)]
 
-            draw.rectangle(rect, outline="red")
+            draw.rectangle(rect, outline="purple")
 
         img.save(image_path)
