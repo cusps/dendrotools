@@ -1,0 +1,26 @@
+{
+    "labels": {
+        "void": {
+            "categorie": "void",
+            "color": [
+                0,
+                0,
+                0
+            ],
+            "id": 1,
+            "id_categorie": 0,
+            "name": "unlabeled"
+        },
+        "vessel": {
+            "categorie": "tree_components",
+            "color": [
+                0,
+                255,
+                0
+            ],
+            "id": 2,
+            "id_categorie": 1,
+            "name": "vessel"
+        }        
+    }
+}
