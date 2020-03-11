@@ -2,7 +2,6 @@
 import os
 import numpy as np
 import torch
-import glob
 from PIL import Image, ImageOps
 
 # getting instance imports
@@ -11,9 +10,9 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 
 # training imports
-from Ring_NoMask_FRONLY import transforms as T
-from Ring_NoMask_FRONLY import utils
-from Ring_NoMask_FRONLY.engine import train_one_epoch, evaluate
+from Vessel_Maskrcnn import transforms as T
+from Vessel_Maskrcnn import utils
+from Vessel_Maskrcnn.engine import train_one_epoch, evaluate
 
 
 def get_rid_of_white_boundary(mask):
@@ -24,58 +23,53 @@ def get_rid_of_white_boundary(mask):
 
 
 class VesselDataset(torch.utils.data.Dataset):
-    def __init__(self, root, transforms=None, img_type='jpg'):
+    def __init__(self, root, transforms=None):
         self.root = root
         self.transforms = transforms
         # load all image files, sorting them to
         # ensure that they are aligned
-        # self.imgs = list(sorted(os.listdir(os.path.join(root, "imgs"))))
-        self.imgs = list(sorted(glob.glob("{}/*.{}".format(os.path.join(root, "imgs"), img_type))))
-        self.box_txts = list(sorted(glob.glob("{}/*.txt".format(os.path.join(root, "imgs")))))
-        # self.masks = list(sorted(os.listdir(os.path.join(root, "masks"))))
+        self.imgs = list(sorted(os.listdir(os.path.join(root, "imgs"))))
+        self.masks = list(sorted(os.listdir(os.path.join(root, "masks"))))
 
     def __getitem__(self, idx):
         # load images ad masks
         img_path = os.path.join(self.root, "imgs", self.imgs[idx])
-        # mask_path = os.path.join(self.root, "masks", self.masks[idx]) # text file with stuffs for detections
-        # TODO make this a JSON
+        mask_path = os.path.join(self.root, "masks", self.masks[idx])
         img = Image.open(img_path).convert("RGB")
-
         # note that we haven't converted the mask to RGB,
         # because each color corresponds to a different instance
         # with 0 being background
 
-        # mask = Image.open(mask_path)
-        # mask = ImageOps.grayscale(mask)
+        mask = Image.open(mask_path)
+        mask = ImageOps.grayscale(mask)
         # mask.show()
-        # mask = np.array(mask)
+        mask = np.array(mask)
 
-        # get_rid_of_white_boundary(mask)
+        get_rid_of_white_boundary(mask)
         # instances are encoded as different colors
-        # obj_ids = np.unique(mask)
+        obj_ids = np.unique(mask)
         # first id is the background, so remove it
-        # obj_ids = obj_ids[1:]
+        obj_ids = obj_ids[1:]
 
         # split the color-encoded mask into a set
         # of binary masks
-        # masks = mask == obj_ids[:, None, None]
+        masks = mask == obj_ids[:, None, None]
 
         # get bounding box coordinates for each mask
-        # num_objs = len(obj_ids)
-        size = img.width, img.height
+        num_objs = len(obj_ids)
         boxes = []
-        num_objs = 0
-        with open(self.box_txts[idx], 'r') as f:
-            for line in f:
-                # pos = np.where(masks[i])
-                data = line.split(' ')
-                boxes.append(convert_yolo_to_maxmin(data, size)[0])
-                num_objs += 1
+        for i in range(num_objs):
+            pos = np.where(masks[i])
+            xmin = np.min(pos[1])
+            xmax = np.max(pos[1])
+            ymin = np.min(pos[0])
+            ymax = np.max(pos[0])
+            boxes.append([xmin, ymin, xmax, ymax])
 
         boxes = torch.as_tensor(boxes, dtype=torch.float32)
         # there is only one class
         labels = torch.ones((num_objs,), dtype=torch.int64)
-        # masks = torch.as_tensor(masks, dtype=torch.uint8)
+        masks = torch.as_tensor(masks, dtype=torch.uint8)
 
         image_id = torch.tensor([idx])
         area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
@@ -85,7 +79,7 @@ class VesselDataset(torch.utils.data.Dataset):
         target = {}
         target["boxes"] = boxes
         target["labels"] = labels
-        # target["masks"] = masks
+        target["masks"] = masks
         target["image_id"] = image_id
         target["area"] = area
         target["iscrowd"] = iscrowd
@@ -99,25 +93,11 @@ class VesselDataset(torch.utils.data.Dataset):
         return len(self.imgs)
 
 
-def convert_yolo_to_maxmin(data, size):
-    img_class = int(data[0])
-    center_x = float(data[1]) * size[0]
-    center_y = float(data[2]) * size[1]
-    width = float(data[3]) * size[0]
-    height = float(data[4]) * size[1]
-
-    xmin = center_x - width / 2
-    xmax = xmin + width
-    ymin = center_y - height / 2
-    ymax = ymin + height
-
-    return [xmin, ymin, xmax, ymax], img_class
 
 
-def get_instance_frcnn_model(num_classes):
+def get_instance_seg_model(num_classes):
     # load an instance segmantation model pre-trained on COCO
-    # model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
 
     # get the num of input features for classifier
     in_features = model.roi_heads.box_predictor.cls_score.in_features
@@ -125,13 +105,12 @@ def get_instance_frcnn_model(num_classes):
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)
 
     # now get the num of input features for mask classifier
-    # in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
-    # hidden_layer = 256
+    in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
+    hidden_layer = 256
     # replace mask predictor with new one
-    # model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
-    #                                                    hidden_layer,
-    #                                                    num_classes)
-
+    model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
+                                                       hidden_layer,
+                                                       num_classes)
     return model
 
 
@@ -171,7 +150,7 @@ def train_model():
         collate_fn=utils.collate_fn)
 
     # get the model using our helper function
-    model = get_instance_frcnn_model(num_classes)
+    model = get_instance_seg_model(num_classes)
 
     # move model to the right device
     model.to(device)
