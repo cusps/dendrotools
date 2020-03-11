@@ -10,9 +10,9 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 
 # training imports
-from Mask_RCNN import transforms as T
-from Mask_RCNN import utils
-from Mask_RCNN.engine import train_one_epoch, evaluate
+from Vessel_Maskrcnn import transforms as T
+from Vessel_Maskrcnn import utils
+from Vessel_Maskrcnn.engine import train_one_epoch, evaluate
 
 
 def get_rid_of_white_boundary(mask):

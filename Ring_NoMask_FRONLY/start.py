@@ -2,6 +2,7 @@
 import os
 import numpy as np
 import torch
+import glob
 from PIL import Image, ImageOps
 
 # getting instance imports
@@ -10,9 +11,9 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 
 # training imports
-from Mask_RCNN import transforms as T
-from Mask_RCNN import utils
-from Mask_RCNN.engine import train_one_epoch, evaluate
+from Ring_NoMask_FRONLY import transforms as T
+from Ring_NoMask_FRONLY import utils
+from Ring_NoMask_FRONLY.engine import train_one_epoch, evaluate
 
 
 def get_rid_of_white_boundary(mask):
@@ -22,31 +23,27 @@ def get_rid_of_white_boundary(mask):
     mask[:, -1] = 3
 
 
-def convert(data):
-    center_x = data[1]
-    center_y = data[2]
-    width = data[3]
-    height = data[4]
 
-    xmin = center_x - width/2
-    xmax =
 
 
 class VesselDataset(torch.utils.data.Dataset):
-    def __init__(self, root, transforms=None):
+    def __init__(self, root, transforms=None, img_type='jpg'):
         self.root = root
         self.transforms = transforms
         # load all image files, sorting them to
         # ensure that they are aligned
-        self.imgs = list(sorted(os.listdir(os.path.join(root, "imgs"))))
-        self.masks = list(sorted(os.listdir(os.path.join(root, "masks"))))
+        # self.imgs = list(sorted(os.listdir(os.path.join(root, "imgs"))))
+        self.imgs = list(sorted(glob.glob("{}/*.{}".format(os.path.join(root, "imgs"), img_type))))
+        self.box_txts = list(sorted(glob.glob("{}/*.txt".format(os.path.join(root, "imgs")))))
+        # self.masks = list(sorted(os.listdir(os.path.join(root, "masks"))))
 
     def __getitem__(self, idx):
         # load images ad masks
         img_path = os.path.join(self.root, "imgs", self.imgs[idx])
-        mask_path = os.path.join(self.root, "masks", self.masks[idx]) # text file with stuffs for detections
+        # mask_path = os.path.join(self.root, "masks", self.masks[idx]) # text file with stuffs for detections
         # TODO make this a JSON
         img = Image.open(img_path).convert("RGB")
+
         # note that we haven't converted the mask to RGB,
         # because each color corresponds to a different instance
         # with 0 being background
@@ -68,12 +65,15 @@ class VesselDataset(torch.utils.data.Dataset):
 
         # get bounding box coordinates for each mask
         # num_objs = len(obj_ids)
+        size = img.width, img.height
         boxes = []
-        with open(boxes_txt, 'r') as f:
+        num_objs = 0
+        with open(self.box_txts[idx], 'r') as f:
             for line in f:
                 # pos = np.where(masks[i])
                 data = line.split(' ')
-                boxes.append([convert(data)])
+                boxes.append(convert_yolo_to_maxmin(data, size)[0])
+                num_objs += 1
 
         boxes = torch.as_tensor(boxes, dtype=torch.float32)
         # there is only one class
@@ -100,6 +100,21 @@ class VesselDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.imgs)
+
+
+def convert_yolo_to_maxmin(data, size):
+    img_class = int(data[0])
+    center_x = float(data[1]) * size[0]
+    center_y = float(data[2]) * size[1]
+    width = float(data[3]) * size[0]
+    height = float(data[4]) * size[1]
+
+    xmin = center_x - width / 2
+    xmax = xmin + width
+    ymin = center_y - height / 2
+    ymax = ymin + height
+
+    return [xmin, ymin, xmax, ymax], img_class
 
 
 

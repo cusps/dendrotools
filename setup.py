@@ -1,8 +1,8 @@
 from setuptools import setup
 
 setup(name='dendrotools',
-      version='0.1',
-      description='Tools for running darknet on tree core images',
+      version='0.2',
+      description='Tools for running computer vision on tree core images',
       url='http://github.com/cusps/dendrotools',
       author='Jacob Bunzel',
       author_email='bunjake@gmail.com',
@@ -10,5 +10,7 @@ setup(name='dendrotools',
       packages=['dendrotools'],
       zip_safe=False,
       install_requires=[
-          "pillow"
+          "pillow",
+          "torch",
+          "torchvision"
       ])
