@@ -1,6 +1,6 @@
 import torch
 from PIL import Image
-from Mask_RCNN import transforms as T
+from Ring_NoMask_FRONLY import transforms as T
 
 from Vessel_Maskrcnn.start import VesselDataset, get_transform, get_instance_seg_model
 from Vessel_Maskrcnn import utils

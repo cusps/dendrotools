@@ -36,7 +36,7 @@ class VesselDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         # load images ad masks
-        img_path = os.path.join(self.root, "imgs", self.imgs[idx])
+        img_path = self.imgs[idx]
         # mask_path = os.path.join(self.root, "masks", self.masks[idx]) # text file with stuffs for detections
         # TODO make this a JSON
         img = Image.open(img_path).convert("RGB")
