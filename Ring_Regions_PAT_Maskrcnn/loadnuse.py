@@ -3,8 +3,8 @@ import numpy as np
 from PIL import Image, ImageDraw
 from Vessel_Maskrcnn import transforms as T
 
-from Vessel_Maskrcnn.start import VesselDataset, get_transform, get_instance_seg_model
-from Vessel_Maskrcnn import utils
+from Ring_Regions_PAT_Maskrcnn.start import VesselDataset, get_transform, get_instance_seg_model
+from Ring_Regions_PAT_Maskrcnn import utils
 
 dataset_test = VesselDataset('data', get_transform(train=False))
 dataset = VesselDataset('data', get_transform(train=True))
@@ -16,18 +16,19 @@ data_loader_test = torch.utils.data.DataLoader(
 
 model = get_instance_seg_model(2)
 
-model.load_state_dict(torch.load('../../vessel_2000.pt'))
+model.load_state_dict(torch.load('vessel_1000.pt'))
 model.eval()
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 model.to(device)
-img, _ = T.ToTensor()(Image.open(r"I:\Research\dendrotools\Vessel_Maskrcnn\test_size\imgs\ccs005a_06-14-2018_10-57-23_crop_vbig.jpg").convert("RGB"), None)
+img, _ = T.ToTensor()(Image.open(r"I:\Research\ccs005a_06-14-2018_10-57-23.jpg").convert("RGB"), None)
 # pick one image from the test set
 # for img, _ in dataset_test:
-# img, _ = dataset_test[0]
+# img, _ = dataset_test[1]
+
 
 # put the model in evaluation mode
-model.transform.max_size = 8100
+model.transform.max_size = 2225
 model.eval()
 with torch.no_grad():
     prediction = model([img.to(device)])
@@ -36,6 +37,7 @@ img_img = (Image.fromarray(img.mul(255).permute(1, 2, 0).byte().numpy()))
 # img_img.show()
 
 # img_img = Image.open(r"I:\Research\CCS717B_1910_780pmm_edit crop.jpg").convert("RGB")
+
 box_img = ImageDraw.Draw(img_img)
 img_masks = torch.zeros(img.size()[1:], dtype=torch.int32)
 for mask in prediction[0]['masks']:

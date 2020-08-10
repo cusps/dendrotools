@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='dendrotools',
-      version='0.2',
+      version='0.3',
       description='Tools for running computer vision on tree core images',
       url='http://github.com/cusps/dendrotools',
       author='Jacob Bunzel',

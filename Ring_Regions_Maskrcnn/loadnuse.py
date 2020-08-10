@@ -2,8 +2,8 @@ import torch
 from PIL import Image, ImageDraw
 from Ring_Maskrcnn import transforms as T
 
-from Ring_Maskrcnn.start import RingMaskDataset, get_transform, get_instance_seg_model
-from Ring_Maskrcnn import utils
+from Ring__Regions_Maskrcnn.start import RingMaskDataset, get_transform, get_instance_seg_model
+from Ring__Regions_Maskrcnn import utils
 
 dataset_test = RingMaskDataset('data', get_transform(train=False))
 dataset = RingMaskDataset('data', get_transform(train=True))

@@ -10,16 +10,16 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 
 # training imports
-from Vessel_Maskrcnn import transforms as T
-from Vessel_Maskrcnn import utils
-from Vessel_Maskrcnn.engine import train_one_epoch, evaluate
+from Ring_Regions_PAT_Maskrcnn import transforms as T
+from Ring_Regions_PAT_Maskrcnn import utils
+from Ring_Regions_PAT_Maskrcnn.engine import train_one_epoch, evaluate
 
 
-def get_rid_of_white_boundary(mask):
-    mask[0] = 3
-    mask[-1] = 3
-    mask[:, 0] = 3
-    mask[:, -1] = 3
+def get_rid_of_white_boundary(mask, null_value=0):
+    mask[0] = null_value
+    mask[-1] = null_value
+    mask[:, 0] = null_value
+    mask[:, -1] = null_value
 
 
 class VesselDataset(torch.utils.data.Dataset):
@@ -30,6 +30,8 @@ class VesselDataset(torch.utils.data.Dataset):
         # ensure that they are aligned
         self.imgs = list(sorted(os.listdir(os.path.join(root, "imgs"))))
         self.masks = list(sorted(os.listdir(os.path.join(root, "masks"))))
+        # for img, mask in self.imgs, self.masks:
+        #TODO: make all img/mask changes here just once
 
     def __getitem__(self, idx):
         # load images ad masks
@@ -45,10 +47,12 @@ class VesselDataset(torch.utils.data.Dataset):
         # mask.show()
         mask = np.array(mask)
 
-        get_rid_of_white_boundary(mask)
+        get_rid_of_white_boundary(mask, 15)
         # instances are encoded as different colors
+        mask[mask == 15] = 0
         obj_ids = np.unique(mask)
         # first id is the background, so remove it
+
         obj_ids = obj_ids[1:]
 
         # split the color-encoded mask into a set
@@ -102,7 +106,7 @@ class VesselDataset(torch.utils.data.Dataset):
 
 def get_instance_seg_model(num_classes):
     # load an instance segmantation model pre-trained on COCO
-    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True, max_size=3300)
+    model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
 
     # get the num of input features for classifier
     in_features = model.roi_heads.box_predictor.cls_score.in_features
@@ -116,7 +120,6 @@ def get_instance_seg_model(num_classes):
     model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask,
                                                        hidden_layer,
                                                        num_classes)
-
     return model
 
 
@@ -136,11 +139,8 @@ def train_model():
 
     num_classes = 2
 
-    # dataset = VesselDataset('data', get_transform(train=True))
-    # dataset_test = VesselDataset('data', get_transform(train=False))
-
-    dataset = VesselDataset('test_size', get_transform(train=True))
-    dataset_test = VesselDataset('test_size', get_transform(train=False))
+    dataset = VesselDataset('data', get_transform(train=True))
+    dataset_test = VesselDataset('data', get_transform(train=False))
 
     # split the dataset in train and test set
     indices = torch.randperm(len(dataset)).tolist()
@@ -160,7 +160,6 @@ def train_model():
 
     # get the model using our helper function
     model = get_instance_seg_model(num_classes)
-
 
     # move model to the right device
     model.to(device)

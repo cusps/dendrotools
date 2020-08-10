@@ -149,7 +149,7 @@ def get_transform(train):
 def train_model():
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    num_classes = 2
+    num_classes = 1
 
     dataset = VesselDataset('data', get_transform(train=True))
     dataset_test = VesselDataset('data', get_transform(train=False))

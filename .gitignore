@@ -3,4 +3,7 @@ __pycache__
 dendrotools.egg-info/
 yolo-obj_final.weights
 ccs009a_full.tiff
-*.pt
+/**/*.pt
+/**/*.png
+/**/*.jpeg
+/**/*.jpg
