@@ -8,7 +8,9 @@ ANNOTATED_IMGS = r'I:\Research\data\Conifer\tracheids\training'
 UNANNOTATED = r'I:\Research\data\Conifer\tracheids\unannotated'
 
 
+# TODO: find out what exactly this did and document
 def fix_masks():
+    """Selects only the first number in the 3 digit color for each of the masks."""
     walk = tuple(os.walk(OLD_MASKS))
     for mask_path in walk[0][2]:
 
@@ -26,6 +28,7 @@ def fix_masks():
 
         for i in range(len(mask)):
             for j in range(len(mask[i])):
+
                 for id_num in range(len(obj_ids)):
                     # print(mask[i][j])
                     # print(obj_ids[id_num])
@@ -43,6 +46,10 @@ def fix_masks():
 
 
 def find_unannotated():
+    """Goes through each of the smaller photos to see if it has an annotation yet.
+
+    If they are unannotated, they are moved to the unannotated folder.
+    """
     img_walk = tuple(os.walk(ANNOTATED_IMGS))
     mask_walk = tuple(os.walk(NEW_LOC))[0][2]
     for img_path in img_walk[0][2]:

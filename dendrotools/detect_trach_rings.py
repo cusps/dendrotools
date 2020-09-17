@@ -19,7 +19,19 @@ IMAGEJ_GET_LINE = r'get_line.py'
 
 # LINE/RECTANGLE
 def line_rect(x1, y1, x2, y2, rx, ry, rw, rh):
+    # TODO: determine docs for this rectangle (where is the x,y point on rect)
+    """Returns whether the inputted line intersects the inputted rectangle.
 
+    :param int x1: x coordinate of first endpoint of line
+    :param int y1: y coordinate of first endpoint of line
+    :param int x2: x coordinate of second endpoint of line
+    :param int y2: y coordinate of first endpoint of line
+    :param int rx:
+    :param int ry:
+    :param int rw:
+    :param int rh:
+    :return: True if there is an intersection, None otherwise
+    """
     # check if the line has hit any of the rectangle's sides
     # uses the Line/Line function below
     left = line_line(x1,y1,x2,y2, rx,ry,rx, ry+rh)
@@ -37,24 +49,41 @@ def line_rect(x1, y1, x2, y2, rx, ry, rw, rh):
 
 # get prediction from the FasterRCNN model Conifer_Trach_Fasterrcnn
 def get_prediction(image_name, model=None):
+    """Uses model to get the prediction/detected boxes for the given image.
+
+    :param string image_name: image path to be detected on
+    :param model: will be used in future versions to specify desired AI model
+    """
 
     return get_prediction_boxes(image_name, MAX_TRANSFORM_SIZE)
 
 
 # LINE/LINE
 def line_line(x1,  y1,  x2,  y2,  x3,  y3,  x4,  y4):
+    """Determines whether the two given lines collide.
+
+    :param int x1: x coordinate of first endpoint of first line
+    :param int y1: y coordinate of first endpoint of first line
+    :param int x2: x coordinate of second endpoint of first line
+    :param int y2: y coordinate of second endpoint of first line
+    :param int x3: x coordinate of first endpoint of second line
+    :param int y3: y coordinate of first endpoint of second line
+    :param int x4: x coordinate of second endpoint of second line
+    :param int y4: y coordinate of second endpoint of second line
+    :return bool: True if there is an intersection, False otherwise
+    """
 
     # calculate the direction of the lines
     uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
     uB = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
 
     # if uA and uB are between 0-1, lines are colliding
-    if uA >= 0 and uA <= 1 and uB >= 0 and uB <= 1:
+    if 0 <= uA <= 1 and 0 <= uB <= 1:
         return True
 
     return False
 
-
+# not currently used...
 class Line:
     slope = 0
     point = tuple()
@@ -72,6 +101,8 @@ class Line:
 
         return False
 
+
+# TODO: place all of this in functions/classes...
 
 image_path = r"I:\Research\herotest_pmc10b_1571-90_5x_03-12-2020_18-14-1test2.jpg"
 
@@ -244,12 +275,12 @@ im.show()
 
 
 def from_perpendicular_slope():
-    None
+    pass
 
 
 def average_perpendicular_slope():
-    None
+    pass
 
 
 def from_multiple_points():
-    None
+    pass

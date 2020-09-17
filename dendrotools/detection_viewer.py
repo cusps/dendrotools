@@ -10,6 +10,17 @@ def create_all_previews(json_folder, viewer_folder_path, images_folder):
 
 
 def create_view(json_path, viewer_folder_path=None, image_path=None):
+    """Save preview of image with the bbox and mask detections
+
+    The JSON file should contain the path for the file and its name.
+
+    :param json_path: JSON file with the images detections
+    :param viewer_folder_path: optional path for where to put these previews
+    :param image_path: optional path to the image to be previewed
+    :return:
+    """
+
+    # TODO: change for current PyTorch models
     json_dict = load(open(json_path, 'r'))
     if not image_path:
         image_path = json_dict['filename']

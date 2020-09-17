@@ -15,12 +15,56 @@ DETECTOR_COMMAND = 'sudo {} detector test {}data/obj_far.data {}yolo-obj-detect-
 OVERLAP = 300
 
 
-class FullImage:
-    """
+def _bb_intersection_over_union(box_a, box_b):
+    """Calculates the bounding-box intersection over union.
 
+    :param list box_a: First box with input of [x1, y1, x2, y2]
+    :param list box_b: Second box with input of [x1, y1, x2, y2]
+    :return tuple: IOU, ratio of intersection area to box a area, same for box b
+    """
+    # determine the (x, y)-coordinates of the intersection rectangle
+    x_a = max(box_a[0], box_b[0])
+    y_a = max(box_a[1], box_b[1])
+    x_b = min(box_a[2], box_b[2])
+    y_b = min(box_a[3], box_b[3])
+
+    # compute the area of intersection rectangle
+    inter_area = max(0, x_b - x_a + 1) * max(0, y_b - y_a + 1)
+
+    # compute the area of both the prediction and ground-truth
+    # rectangles
+    box_a_area = (box_a[2] - box_a[0] + 1) * (box_a[3] - box_a[1] + 1)
+    box_b_area = (box_b[2] - box_b[0] + 1) * (box_b[3] - box_b[1] + 1)
+
+    # compute the intersection over union by taking the intersection
+    # area and dividing it by the sum of prediction + ground-truth
+    # areas - the interesection area
+    iou = inter_area / float(box_a_area + box_b_area - inter_area)
+
+    # return the intersection over union value
+    return iou, inter_area/float(box_a_area), inter_area/float(box_b_area)
+
+
+class FullImage:
+    """Hold information for a full tiff image and run the AI detection model on it.
+
+    Before running the AI on the image, it must be reduced into smaller sections
+    as an image too large will require too much GPU memory. It is broken into
+    sections, the AI is run on those sections, then they are merged while
+    checking for double detections.
     """
     def __init__(self, full_image_path, results_path, detector_path=None):
+        """Creates a FullImage object, taking in the image and output location
+
+        :param full_image_path: path to the full, large image
+        :param results_path: path to where the resulting images will be dumped
+        :param detector_path: (not implemented) detection model to be used on images
+        """
+        # TODO: add more config so it is easier to select a detector
+        # this method is open to flaws and incorrect inputs which lead to errors.
         self.detector = DETECTOR_PATH if not detector_path else detector_path
+
+        # Get characteristics of the image
         self.path = full_image_path
         self.image_folder = os.path.dirname(full_image_path)
         self.name = os.path.splitext(os.path.basename(os.path.normpath(self.path)))[0]
@@ -29,14 +73,38 @@ class FullImage:
             self.width = img.size[0]
             self.height = img.size[1]
         self.num_sections = None
+
+        # These files store the details of each image that has been split up
+        # TODO: more info here about this
         self.sections_text = "{}/{}_sections.txt".format(self.image_folder, self.name)
         self.sections_json = "{}/{}_section_results.json".format(self.image_folder, self.name)
+
+        # Calculate the size each image should be based on the full image's size
+        # and the max height/width pre-defined (based on GPU memory)
         self.section_size = self._calc_section_size()
+
+        # break up the full image into smaller pieces for detection
         self._break_up_image()
-        self.detect_command = DETECTOR_COMMAND.format(DETECTOR_PATH, DETECTOR_FOLDER, DETECTOR_FOLDER, DETECTOR_FOLDER, self.sections_json, self.sections_text)
+
+        # Create detection command based on image characteristics
+        self.detect_command = DETECTOR_COMMAND.format(DETECTOR_PATH, DETECTOR_FOLDER,
+                                                      DETECTOR_FOLDER, DETECTOR_FOLDER,
+                                                      self.sections_json, self.sections_text)
+
+        # Run the detector on the split up images
         self._run_detection_sections()
 
     def _calc_section_size(self):
+        """Calculate the size of the small images (sections) based on the full image
+
+        This uses the pre-defined max height/width and the total height and width
+        of the full image to find the size of the individual images. So
+        essentially a divison. The max height/width is determined by how much my
+        GPU can handle really. Even with a scaled up GPU, we should still
+        remain consistent.
+
+        :return tuple: length and height, respectively, as ints
+        """
         self.num_sections = math.ceil(self.width / MAX_PIXEL_DIM_WITHOUT_OVERLAP)
         section_length = self.width / self.num_sections + OVERLAP
         if self.height < MAX_PIXEL_DIM:
@@ -47,6 +115,18 @@ class FullImage:
         return section_length, section_height
 
     def _break_up_image(self):
+        """Based on the section size, divide the full image into many smaller sections
+
+        Saves each of the sections' heights and widths for when the image needs to
+        be put back together.
+
+        Due to the potential of having a half of a detectable object on a section,
+        there needs to be overlap between sections. The size of the overlap should
+        be the max size of an object in pixels. This is taken into account when
+        generating and saving the widths and lengths of each section
+        """
+
+        # TODO: add more comments for how this overlapping is done
         # include overlap
         self.section_widths = []
         with Image.open(self.path) as full_img:
@@ -67,6 +147,13 @@ class FullImage:
                                      sections)
 
     def _create_section(self, full_img, num, width_dims, list_file):
+        """Crops full image to create a section based on the dimensions
+
+        :param Image.Image full_img: full image that is opened with PIL
+        :param int num: number associated with this section
+        :param tuple width_dims: contains the starting and ending width of the section
+        :param IO list_file: open file where the sections are listed
+        """
         section_name = self.image_folder + "/{}_section_{}.jpg".format(self.name, (num + 1))
         full_img.crop((
             width_dims[0], self.section_size[1][0],
@@ -75,6 +162,13 @@ class FullImage:
         list_file.write('{}\n'.format(section_name))
 
     def _run_detection_sections(self):
+        """Runs AI detection model on all of the image's sections and merges them back.
+
+        This is not set up for PyTorch models at this point. Also, the merger needs
+        work.
+        """
+
+        # TODO: set up for new pyTorch models
         sections_results = "{}/{}_section_results.json".format(self.image_folder, self.name)
 
         os.system(self.detect_command)
@@ -88,30 +182,14 @@ class FullImage:
 
         self._save_results(full_result)
 
-    def _bb_intersection_over_union(self, box_a, box_b):
-        # determine the (x, y)-coordinates of the intersection rectangle
-        x_a = max(box_a[0], box_b[0])
-        y_a = max(box_a[1], box_b[1])
-        x_b = min(box_a[2], box_b[2])
-        y_b = min(box_a[3], box_b[3])
-
-        # compute the area of intersection rectangle
-        inter_area = max(0, x_b - x_a + 1) * max(0, y_b - y_a + 1)
-
-        # compute the area of both the prediction and ground-truth
-        # rectangles
-        box_a_area = (box_a[2] - box_a[0] + 1) * (box_a[3] - box_a[1] + 1)
-        box_b_area = (box_b[2] - box_b[0] + 1) * (box_b[3] - box_b[1] + 1)
-
-        # compute the intersection over union by taking the intersection
-        # area and dividing it by the sum of prediction + ground-truth
-        # areas - the interesection area
-        iou = inter_area / float(box_a_area + box_b_area - inter_area)
-
-        # return the intersection over union value
-        return iou, inter_area/float(box_a_area), inter_area/float(box_a_area)
-
     def _detection_overlap(self, first, second):
+        """Calculates whether the two detections are of the same object.
+
+        :param Detection first: one detection under question
+        :param Detection second: second detection under question
+        :return Tuple: whether they are, their IOU, and the detection
+        with the lower confidence
+        """
         first_right = first.left_x + first.width
         second_right = second.left_x + second.width
         first_bottom = first.top_y + first.height
@@ -124,7 +202,7 @@ class FullImage:
                      ((second.top_y > first.top_y) and (second_bottom < first.top_y)))
 
         if overlap_1 or overlap_2:
-            iou = self._bb_intersection_over_union(first.get_box(), second.get_box()) #*******************************#
+            iou = _bb_intersection_over_union(first.get_box(), second.get_box()) #*******************************#
             min_percent_detection = (first.percent
                                      if first.percent < second.percent
                                      else second.percent)
@@ -133,6 +211,12 @@ class FullImage:
         return False, None, None
 
     def _merge_sections_detections(self, sections_results_path):
+        """Merges the detections from the sections back into the full image.
+
+        :param sections_results_path: path to json file with all the sections'
+            detection results
+        :return list: json object that contains the merged sectons' detections
+        """
         sections_results = json.load(open(sections_results_path, 'r'))
         detections = []
         dims = (self.section_size[0], self.section_size[1][1] - self.section_size[1][0])
@@ -161,9 +245,15 @@ class FullImage:
         return [json_dict]
 
     def _save_results(self, results):
+        """Save the JSON file with the full image detection results.
+
+        :param results: list with dictionary as element
+            and contains detections for full image
+        """
         json.dump(results, open(self.result_path, 'w'))
 
     def _delete_sections(self):
+        """Deletes all of the sections that were created from the full image."""
         lines = open(self.sections_text, 'r').read().splitlines()
         for section in lines:
             os.remove(section)
@@ -172,8 +262,19 @@ class FullImage:
 
 
 class Detection:
-
+    """
+    """
+    # TODO: modify this for PyTorch models
     def __init__(self, section, offset, detection_info, dims, img_width, img_height):
+        """Stores all of the detection info into class.
+
+        :param int section: which section this detection is from
+        :param offset: offset of the section from the full image
+        :param dict detection_info: dictionary with information about the detection
+        :param dims: dimensions of the section
+        :param img_width: width of the full image
+        :param img_height: height of the full image
+        """
         self.section_num = section
         self.percent = detection_info['confidence']
         self.info = detection_info
@@ -190,12 +291,21 @@ class Detection:
         self.image_class = detection_info['name']
 
     def __str__(self):
+        """Put together a string with the info for this detection
+
+        :return str: contains the dimensions of the detection
+        """
         return (self.image_class + ": " + str(self.percent) + "%\t"
                 + "(left_x:\t" + str(self.left_x) + "\ttop_y:\t"
                 + str(self.top_y) + "\twidth:\t" + str(self.width)
                 + "\theight:\t" + str(self.height) + ")\n")
 
     def get_box(self):
+        """Formats the dimensions of the detection in another fashion
+
+        :return list: box dimentions [x1, y1, x2, y2], with the points
+            being the top left and bottom right of the box
+        """
         return [self.left_x, self.top_y,
                 self.left_x + self.width,
                 self.top_y + self.height]

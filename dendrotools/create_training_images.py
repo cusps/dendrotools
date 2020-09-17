@@ -33,6 +33,10 @@ function/script for adding new images from the website
 
 
 def make_dirs_from_filenames():
+    """Make directories from sources images.
+
+    Source images are the full tiff images.
+    """
     root = tk.Tk()
     root.withdraw()
 
@@ -48,6 +52,12 @@ def make_dirs_from_filenames():
 
 
 def split_original_to_training():
+    """Splits the large original image into the smaller training images.
+
+    Actually calls another function `split_into_parts` to split the original
+    image. This function also calls an imagej script to allow the user
+    to crop it.
+    """
     ImageJ_org_to_crop_macro = os.path.join(os.curdir, IMAGEJ_SCRIPTS_DIRECTORY, IMAGEJ_O_TO_CROP_SCRIPT)
 
 
@@ -92,11 +102,18 @@ def split_original_to_training():
 
         else:
             if has_jsons < 3 and has_jsons > 0:
-                None
+                pass
                 # TODO: report major error here. may need manual checking, could do some error logging about whats wrong
 
 
 def split_into_parts(img_full_path, img_type, max_size):
+    """Crops the image into parts based on the max size.
+
+    :param str img_full_path: path to the full image
+    :param str img_type: either tracheid or vessel image
+    :param tuple max_size: max dimension size of the smaller images
+    :return:
+    """
     if not img_type == 'tracheids':
         training_path = r'I:\Research\data\{}\training'.format(img_type)
     else:
