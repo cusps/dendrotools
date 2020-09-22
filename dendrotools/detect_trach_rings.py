@@ -83,6 +83,7 @@ def line_line(x1,  y1,  x2,  y2,  x3,  y3,  x4,  y4):
 
     return False
 
+
 # not currently used...
 class Line:
     slope = 0
@@ -97,76 +98,80 @@ class Line:
 
     def in_box(self, box):
         # TODO: check if line goes through box
-
-
         return False
 
 
-# TODO: place all of this in functions/classes...
-
-image_path = r"I:\Research\herotest_pmc10b_1571-90_5x_03-12-2020_18-14-1test2.jpg"
-
-# Path to get_line macro for ImageJ
-script_path = os.path.join(IMAGEJ_SCRIPTS_DIRECTORY, IMAGEJ_GET_LINE)
-# x = subprocess.check_output([IMAGEJ, "-macro", script_path, image_path])
-
-# Retreive line data that was drawn in Imagej
-with open('I:\Research\dendrotools\dendrotools\imagej_scripts\data.txt') as json_file:
-    data = json.load(json_file)
-
-l1 = Line(data)
-# slope = (data['y2'] - data['y1'])/(data['x2']-data['x1'])
-# point = (data['x1'],  data['y1'])
-
-# List that will hold onto formatted bounding boxes
-bbox_list = list()
-
-# Get unformatted tensor bounding boxes
-bboxes = get_prediction(image_path)
-
 # TODO: Loop through bounding boxes to put in better format
+def _find_bbox_line_intersections(bboxes, line):
+    # Loop through bounding boxes to find those intersecting with drawn line
+    bbox_list = list()
 
-# Loop through bounding boxes to find those intersecting with drawn line
-for bbox in bboxes:
-    bbox = bbox.numpy()
-    bbox_w = bbox[2] - bbox[0]
-    bbox_h = bbox[3] - bbox[1]
-    if line_rect(data['x1'], data['y1'], data['x2'], data['y2'], bbox[0], bbox[1], bbox_w, bbox_h):
-        centerx = 0
-        bbox_list.append([bbox[0], bbox[1], bbox_w, bbox_h, centerx])
+    for bbox in bboxes:
+        bbox = bbox.numpy()
+        bbox_w = bbox[2] - bbox[0]
+        bbox_h = bbox[3] - bbox[1]
+        if line_rect(line['x1'], line['y1'], line['x2'], line['y2'], bbox[0], bbox[1], bbox_w, bbox_h):
+            centerx = 0
+            bbox_list.append([bbox[0], bbox[1], bbox_w, bbox_h, centerx])
+
+    return bbox_list
 
 
-bbox_list = sorted(bbox_list, key=lambda box: box[0])
+# TODO: place all of this in functions/classes... Continue
 
-im = Image.open(image_path)
-box_img = ImageDraw.Draw(im)
-# for box in bbox_list:
-    # box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
+def detect_rings(image_path=r"I:\Research\herotest_pmc10b_1571-90_5x_03-12-2020_18-14-1test2.jpg"):
 
-# im.show()
-center2 = ()
-center1 = ()
+    # Path to get_line macro for ImageJ
+    script_path = os.path.join(IMAGEJ_SCRIPTS_DIRECTORY, IMAGEJ_GET_LINE)
+    # x = subprocess.check_output([IMAGEJ, "-macro", script_path, image_path])
 
-box = bbox_list[0]
-box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
-for i in range(1, len(bbox_list)):
-    box = bbox_list[i]
-    box2 = bbox_list[i - 1]
-    box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
-    area_diff = bbox_list[i][2]*bbox_list[i][3] - bbox_list[i-1][2]*bbox_list[i-1][3]
-    box[4] = (box[0] + box[2] / 2, box[1] + box[3] / 2)
-    box2[4] = (box2[0] + box2[2] / 2, box2[1] + box2[3] / 2)
-    distance = math.sqrt((box2[4][1] - box[4][1])**2 + (box2[4][0] - box[4][0])**2)
-    change_area_over_x = area_diff / distance
-    # print(area_diff)
+    # Retreive line data that was drawn in Imagej
+    with open('I:\Research\dendrotools\dendrotools\imagej_scripts\data.txt') as json_file:
+        data = json.load(json_file)
+
+    l1 = Line(data)
+    # slope = (data['y2'] - data['y1'])/(data['x2']-data['x1'])
+    # point = (data['x1'],  data['y1'])
+
+    # List that will hold onto formatted bounding boxes
+
+
+    # Get unformatted tensor bounding boxes
+    bboxes = get_prediction(image_path)
+
+    bbox_list = _find_bbox_line_intersections(bboxes, data)
+
+    bbox_list = sorted(bbox_list, key=lambda box: box[0])
+
+    im = Image.open(image_path)
+    box_img = ImageDraw.Draw(im)
+    # for box in bbox_list:
+        # box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
+
     # im.show()
-    if change_area_over_x > RING_DERIVATIVE_CONFIDENCE: #and distance < 200:
-        center1 = (box[0] + box[2]/2, box[1] + box[3]/2)
-        center2 = (box2[0] + box2[2]/2, box2[1] + box2[3]/2)
-        box_img.line(((center1[0] + center2[0])/2-1,
-                      (center1[1] + center2[1])/2-1,
-                      (center1[0] + center2[0])/2+1,
-                      (center1[1] + center2[1])/2+1), fill="green", width=2)
+    center2 = ()
+    center1 = ()
+
+    box = bbox_list[0]
+    box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
+    for i in range(1, len(bbox_list)):
+        box = bbox_list[i]
+        box2 = bbox_list[i - 1]
+        box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
+        area_diff = bbox_list[i][2]*bbox_list[i][3] - bbox_list[i-1][2]*bbox_list[i-1][3]
+        box[4] = (box[0] + box[2] / 2, box[1] + box[3] / 2)
+        box2[4] = (box2[0] + box2[2] / 2, box2[1] + box2[3] / 2)
+        distance = math.sqrt((box2[4][1] - box[4][1])**2 + (box2[4][0] - box[4][0])**2)
+        change_area_over_x = area_diff / distance
+        # print(area_diff)
+        # im.show()
+        if change_area_over_x > RING_DERIVATIVE_CONFIDENCE: #and distance < 200:
+            center1 = (box[0] + box[2]/2, box[1] + box[3]/2)
+            center2 = (box2[0] + box2[2]/2, box2[1] + box2[3]/2)
+            box_img.line(((center1[0] + center2[0])/2-1,
+                          (center1[1] + center2[1])/2-1,
+                          (center1[0] + center2[0])/2+1,
+                          (center1[1] + center2[1])/2+1), fill="green", width=2)
 
         slope = (center2[1] - center1[1])/(center2[0] - center1[0])
         slope_perp = -1/slope
@@ -177,101 +182,101 @@ for i in range(1, len(bbox_list)):
         # box_img.line((point1, point2), fill='purple', width=2)
         break
 
-slope_org_line = (data['y2'] - data['y1'])/(data['x2'] - data['x1'])
-slope_for_new_line = -1/((data['y2'] - data['y1'])/(data['x2'] - data['x1']))
-point = (((h-center1[1]+slope_for_new_line*center1[0])/slope_for_new_line), h)
-point2 = ((-1*point[1]+slope_for_new_line*point[0])/slope_for_new_line, 0)
+    slope_org_line = (data['y2'] - data['y1'])/(data['x2'] - data['x1'])
+    slope_for_new_line = -1/((data['y2'] - data['y1'])/(data['x2'] - data['x1']))
+    point = (((h-center1[1]+slope_for_new_line*center1[0])/slope_for_new_line), h)
+    point2 = ((-1*point[1]+slope_for_new_line*point[0])/slope_for_new_line, 0)
 
-# box_img.line((point, point2), width=2, fill='red')
-#  Show image for debugging purposes...
-im.show()
-
-
-bbox_list = list()
-bbox_new = []
-bboxes = get_prediction(image_path)
-for bbox in bboxes:
-    bbox = bbox.numpy()
-    bbox_w = bbox[2] - bbox[0]
-    bbox_h = bbox[3] - bbox[1]
-    if line_rect(point[0], point[1], point2[0], point2[1], bbox[0], bbox[1], bbox_w, bbox_h):
-        centerx = 0
-        bbox_list.append([bbox[0], bbox[1], bbox_w, bbox_h, centerx])
-
-bbox_list = sorted(bbox_list, key=lambda box: box[1])
-
-for box in bbox_list:
-    box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
-
-box_img.rectangle([bbox_list[0][0], bbox_list[0][1], bbox_list[0][0] + bbox_list[0][2], bbox_list[0][1] + bbox_list[0][3]], outline="green", width=2)
-im.show()
-# box = bbox_list[0]
-# box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
-# for i in range(1, len(bbox_list)):
+    # box_img.line((point, point2), width=2, fill='red')
+    #  Show image for debugging purposes...
+    im.show()
 
 
-# mark point, left side of square
-im.show()
-
-lines = list()
-for box in bbox_list:
-    center = (box[0] + box[2]/2, box[1] + box[3]/2)
-    point2 = ((-1 * point[1] + slope_org_line * point[0]) / slope_for_new_line, 0)
-    lines.append(((center[0], center[1]), (0, slope_org_line*(-1*center[0])+center[1])))
-    lines.append(((w, slope_org_line*(w-1*center[0])+center[1]), (0, slope_org_line*(-1*center[0])+center[1])))
-
-bbox_list = [0]*len(lines)
-bbox_new = []
-line_count = 0
-for bbox in bboxes:
-    bbox = bbox.numpy()
-    bbox_w = bbox[2] - bbox[0]
-    bbox_h = bbox[3] - bbox[1]
-    line_count = 0
-    for line in lines:
-        # box_img.line((line[0], line[1]), fill='pink', width=2)
-        if not type(bbox_list[line_count]) == list:
-            bbox_list[line_count] = []
-        if line_rect(line[0][0], line[0][1], line[1][0], line[1][1], bbox[0], bbox[1], bbox_w, bbox_h):
+    bbox_list = list()
+    bbox_new = []
+    bboxes = get_prediction(image_path)
+    for bbox in bboxes:
+        bbox = bbox.numpy()
+        bbox_w = bbox[2] - bbox[0]
+        bbox_h = bbox[3] - bbox[1]
+        if line_rect(point[0], point[1], point2[0], point2[1], bbox[0], bbox[1], bbox_w, bbox_h):
             centerx = 0
-            bbox_list[line_count].append([bbox[0], bbox[1], bbox_w, bbox_h, centerx])
-            break
-        line_count += 1
+            bbox_list.append([bbox[0], bbox[1], bbox_w, bbox_h, centerx])
 
-for l in range(len(lines)):
-    bbox_list[l] = sorted(bbox_list[l], key=lambda box: box[0])
-    for i in range(1, len(bbox_list[l])):
-        # TODO: bad assumption here
-        box = bbox_list[l][i]
-        box2 = bbox_list[l][i - 1]
-        box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="pink", width=2)
-        area_diff = bbox_list[l][i][2]*bbox_list[l][i][3] - bbox_list[l][i-1][2]*bbox_list[l][i-1][3]
-        box[4] = (box[0] + box[2] / 2, box[1] + box[3] / 2)
-        box2[4] = (box2[0] + box2[2] / 2, box2[1] + box2[3] / 2)
-        distance = math.sqrt((box2[4][1] - box[4][1]) ** 2 + (box2[4][0] - box[4][0]) ** 2)
-        change_area_over_x = area_diff / distance
-        # print(area_diff)
-        # im.show()
-        if change_area_over_x > RING_DERIVATIVE_CONFIDENCE and area_diff > RING_AREA_CHANGE_CONFIDENCE: #and distance < 200:
-            center1 = (box[0] + box[2]/2, box[1] + box[3]/2)
-            center2 = (box2[0] + box2[2]/2, box2[1] + box2[3]/2)
-            box_img.line(((center1[0] + center2[0])/2-1,
-                          (center1[1] + center2[1])/2-1,
-                          (center1[0] + center2[0])/2+1,
-                          (center1[1] + center2[1])/2+1), fill="green", width=2)
+    bbox_list = sorted(bbox_list, key=lambda box: box[1])
 
-            slope = (center2[1] - center1[1])/(center2[0] - center1[0])
-            slope_perp = -1/slope
-            intercept = (center1[1] + center2[1])/2 - slope_perp*(center1[0] + center2[0])/2
-            w, h = im.size
-            point1 = (h-intercept)/slope_perp, h
-            point2 = (-1*intercept)/slope_perp, 0
-            # box_img.line((point1, point2), fill='purple', width=2)
-            break
+    for box in bbox_list:
+        box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
+
+    box_img.rectangle([bbox_list[0][0], bbox_list[0][1], bbox_list[0][0] + bbox_list[0][2], bbox_list[0][1] + bbox_list[0][3]], outline="green", width=2)
+    im.show()
+    # box = bbox_list[0]
+    # box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="red", width=2)
+    # for i in range(1, len(bbox_list)):
 
 
-# box_img.line(((w, slope_org_line*(w-1*center1[0])+center1[1]), (0, slope_org_line*(-1*center1[0])+center1[1])), fill='red', width=2)
-im.show()
+    # mark point, left side of square
+    im.show()
+
+    lines = list()
+    for box in bbox_list:
+        center = (box[0] + box[2]/2, box[1] + box[3]/2)
+        point2 = ((-1 * point[1] + slope_org_line * point[0]) / slope_for_new_line, 0)
+        lines.append(((center[0], center[1]), (0, slope_org_line*(-1*center[0])+center[1])))
+        lines.append(((w, slope_org_line*(w-1*center[0])+center[1]), (0, slope_org_line*(-1*center[0])+center[1])))
+
+    bbox_list = [0]*len(lines)
+    bbox_new = []
+    line_count = 0
+    for bbox in bboxes:
+        bbox = bbox.numpy()
+        bbox_w = bbox[2] - bbox[0]
+        bbox_h = bbox[3] - bbox[1]
+        line_count = 0
+        for line in lines:
+            # box_img.line((line[0], line[1]), fill='pink', width=2)
+            if not type(bbox_list[line_count]) == list:
+                bbox_list[line_count] = []
+            if line_rect(line[0][0], line[0][1], line[1][0], line[1][1], bbox[0], bbox[1], bbox_w, bbox_h):
+                centerx = 0
+                bbox_list[line_count].append([bbox[0], bbox[1], bbox_w, bbox_h, centerx])
+                break
+            line_count += 1
+
+    for l in range(len(lines)):
+        bbox_list[l] = sorted(bbox_list[l], key=lambda box: box[0])
+        for i in range(1, len(bbox_list[l])):
+            # TODO: bad assumption here
+            box = bbox_list[l][i]
+            box2 = bbox_list[l][i - 1]
+            box_img.rectangle([box[0], box[1], box[0] + box[2], box[1] + box[3]], outline="pink", width=2)
+            area_diff = bbox_list[l][i][2]*bbox_list[l][i][3] - bbox_list[l][i-1][2]*bbox_list[l][i-1][3]
+            box[4] = (box[0] + box[2] / 2, box[1] + box[3] / 2)
+            box2[4] = (box2[0] + box2[2] / 2, box2[1] + box2[3] / 2)
+            distance = math.sqrt((box2[4][1] - box[4][1]) ** 2 + (box2[4][0] - box[4][0]) ** 2)
+            change_area_over_x = area_diff / distance
+            # print(area_diff)
+            # im.show()
+            if change_area_over_x > RING_DERIVATIVE_CONFIDENCE and area_diff > RING_AREA_CHANGE_CONFIDENCE: #and distance < 200:
+                center1 = (box[0] + box[2]/2, box[1] + box[3]/2)
+                center2 = (box2[0] + box2[2]/2, box2[1] + box2[3]/2)
+                box_img.line(((center1[0] + center2[0])/2-1,
+                              (center1[1] + center2[1])/2-1,
+                              (center1[0] + center2[0])/2+1,
+                              (center1[1] + center2[1])/2+1), fill="green", width=2)
+
+                slope = (center2[1] - center1[1])/(center2[0] - center1[0])
+                slope_perp = -1/slope
+                intercept = (center1[1] + center2[1])/2 - slope_perp*(center1[0] + center2[0])/2
+                w, h = im.size
+                point1 = (h-intercept)/slope_perp, h
+                point2 = (-1*intercept)/slope_perp, 0
+                # box_img.line((point1, point2), fill='purple', width=2)
+                break
+
+
+    # box_img.line(((w, slope_org_line*(w-1*center1[0])+center1[1]), (0, slope_org_line*(-1*center1[0])+center1[1])), fill='red', width=2)
+    im.show()
 
 
 def from_perpendicular_slope():
