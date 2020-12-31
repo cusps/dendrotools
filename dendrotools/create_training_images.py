@@ -13,6 +13,7 @@ IMAGEJ_SCRIPTS_DIRECTORY = r'imagej_scripts'
 IMAGEJ = "I:\Fiji.app\ImageJ-win64.exe"
 IMAGEJ_O_TO_CROP_SCRIPT = "imagej_original_to_cropped.py"
 
+# TODO: make config file for this in source files
 CORE_SIZE = (3000, 0)
 RING_SIZE = (2000, 2000)
 VESSEL_SIZE = (500, 500)
@@ -29,7 +30,6 @@ function/script for adding new images from the website
 *split into both training for vessel and ring boundary training
 *
 """
-# TODO: make config file for this in source files
 
 
 def make_dirs_from_filenames():
@@ -76,10 +76,13 @@ def split_original_to_training():
     dir_list = os.listdir(source_image_path)
 
     for dir in dir_list:
+        # checks if this file has its labels yet
         has_jsons = (os.path.exists(os.path.join(source_image_path, dir, "{}_{}.json".format(dir, "vessels"))) +
                      os.path.exists(os.path.join(source_image_path, dir, "{}_{}.json".format(dir, "rings"))) +
                      os.path.exists(os.path.join(source_image_path, dir, "{}_{}.json".format(dir, "core"))) +
                      os.path.exists(os.path.join(source_image_path, dir, "{}_{}.json".format(dir, "core"))))
+
+        # if it doesn't have its labels
         if has_jsons == 0:
 
             img_full_path = os.path.join(source_image_path, dir, "{}.tiff".format(dir)).replace('\\', "/")
